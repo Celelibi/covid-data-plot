@@ -16,14 +16,12 @@ def new_connection():
 
 def create_tables(cur):
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS daily_report (
+        CREATE TABLE IF NOT EXISTS daily_update (
             date TEXT,
             country TEXT,
-            state TEXT,
-            admin2 TEXT,
             confirmed INT,
             deaths INT,
             recovered INT,
-            PRIMARY KEY (date, country, state, admin2)
+            PRIMARY KEY (country, date)
         )
     """)
