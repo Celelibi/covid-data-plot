@@ -209,44 +209,43 @@ def dataframe_fit(cnx, country):
     Y = df["confirmed"].to_numpy()
 
     scaler, poptexp, poptsig = fit_models(X, Y)
-    X = scaler.transform(X.reshape(-1, 1)).reshape(-1)
-    df["expmodel"] = exp(X, *poptexp)
-    df["sigmoidmodel"] = sigma(X, *poptsig)
 
     return df, scaler, poptexp, poptsig
 
 
 
-def extrapolate(days, df, scaler, poptexp, poptsig):
-    day = np.timedelta64(1, "D")
-    firstdate = df["date"].to_numpy().max() + day
-    dates = np.arange(firstdate, firstdate + days * day, day)
+def simulate_models(df, scaler, poptexp, poptsig, until=None, step=None):
+    if step is None:
+        step = np.timedelta64(1, "D")
 
-    X = dates.astype(np.float64)
+    firstdate = df["date"].to_numpy().max() + step
+    if until is not None and until > firstdate:
+        dates = np.arange(firstdate, until, step)
+        df = df.append(pd.DataFrame({"date": dates}), sort=False)
+
+    X = df["date"].to_numpy().astype(np.float64)
     X = scaler.transform(X.reshape(-1, 1)).reshape(-1)
 
-    Yexp = exp(X, *poptexp)
-    Ysig = sigma(X, *poptsig)
+    df["expmodel"] = exp(X, *poptexp)
+    df["sigmoidmodel"] = sigma(X, *poptsig)
 
-    columns = {
-        "date": dates,
-        "expmodel": Yexp,
-        "sigmoidmodel": Ysig
-    }
-    newdf = pd.DataFrame(columns)
-
-    return df.append(newdf, sort=False)
+    return df
 
 
 
 def plot_regression(cnx, countries):
-    params = {"countries": countries}
+    oneday = np.timedelta64(1, "D")
     datasource = []
     for c in countries:
-        data = dataframe_fit(cnx, c)
-        fulldf = extrapolate(30, *data)
+        df, scaler, poptexp, poptsig = dataframe_fit(cnx, c)
+
+        lastdate = df["date"].to_numpy().max() + oneday
+        lastdate = lastdate + 30 * oneday
+        fulldf = simulate_models(df, scaler, poptexp, poptsig, until=lastdate)
+
         datasource.append(fulldf.itertuples(index=False))
 
+    params = {"countries": countries}
     plot(None, datasource, "confirmed_fit_time", params)
 
 
