@@ -2,6 +2,7 @@
 
 import os
 import contextlib
+import collections
 import subprocess
 import argparse
 import tempfile
@@ -77,8 +78,12 @@ def plot(cur, datasource, name, params={}):
     gnuplotcmd += ["-e", 'load "%s"' % gnuplotinc]
     gnuplotcmd += ["-e", 'set output "%s"' % figfile]
 
-    datasourceit = datasource.values()
-    datanames = datasource.keys()
+    if isinstance(datasource, collections.abc.Mapping):
+        datasourceit = datasource.values()
+        datanames = datasource.keys()
+    else:
+        datasourceit = datasource
+        datanames = None
 
     with contextlib.ExitStack() as exitstack:
         datafpnames = []
@@ -90,11 +95,17 @@ def plot(cur, datasource, name, params={}):
             fill_datafiles(cur, dsource, params, datafp)
 
 
-        for dataname, filename in zip(datanames, datafpnames):
-            gnuplotcmd += ["-e", '%s = "%s"' % (dataname, filename)]
+        if datanames is not None:
+            for dataname, filename in zip(datanames, datafpnames):
+                gnuplotcmd += ["-e", '%s = "%s"' % (dataname, filename)]
+        else:
+            gnuplotcmd += ["-e", "array filenames = %r" % datafpnames]
 
-        for kv in params.items():
-            gnuplotcmd += ["-e", '%s = %r' % kv]
+        for k, v in params.items():
+            if isinstance(v, list):
+                gnuplotcmd += ["-e", 'array %s = %r' % (k, v)]
+            else:
+                gnuplotcmd += ["-e", '%s = %r' % (k, v)]
 
         gnuplotcmd.append(gnuplotfile)
         subprocess.run(gnuplotcmd)
@@ -102,58 +113,38 @@ def plot(cur, datasource, name, params={}):
 
 
 
-def plot_raw_data(cur):
-    datasource = {
-        'conf_time_fr': """
+def plot_raw_data(cur, countries):
+    params = {"country%d" % i: c for i, c in enumerate(countries)}
+    params["countries"] = countries
+
+    datasource = ["""
             SELECT date, confirmed
             FROM daily_update
-            WHERE country='France'
+            WHERE country=:country%d
             ORDER BY date
-        """,
-        'conf_time_ch': """
-            SELECT date, confirmed
-            FROM daily_update
-            WHERE country='Chine'
-            ORDER BY date
-        """
-    }
-    plot(cur, datasource, "confirmed_time")
+        """ % i for i in range(len(countries))
+    ]
+    plot(cur, datasource, "confirmed_time", params)
 
-    datasource = {
-        'conf_time_fr': """
+    datasource = ["""
             SELECT date, confirmed - lag(confirmed) OVER win
             FROM daily_update
-            WHERE country='France'
+            WHERE country=:country%d
             WINDOW win AS (ORDER BY date)
             ORDER BY date
-        """,
-        'conf_time_ch': """
-            SELECT date, confirmed - lag(confirmed) OVER win
-            FROM daily_update
-            WHERE country='Chine'
-            WINDOW win AS (ORDER BY date)
-            ORDER BY date
-        """
-    }
-    plot(cur, datasource, "diff_confirmed_time")
+        """ % i for i in range(len(countries))
+    ]
+    plot(cur, datasource, "diff_confirmed_time", params)
 
-    datasource = {
-        'conf_time_fr': """
+    datasource = ["""
             SELECT confirmed, confirmed - lag(confirmed) OVER win
             FROM daily_update
-            WHERE country='France'
+            WHERE country=:country%d
             WINDOW win AS (ORDER BY date)
             ORDER BY date
-        """,
-        'conf_time_ch': """
-            SELECT confirmed, confirmed - lag(confirmed) OVER win
-            FROM daily_update
-            WHERE country='Chine'
-            WINDOW win AS (ORDER BY date)
-            ORDER BY date
-        """
-    }
-    plot(cur, datasource, "diff_confirmed_confirmed")
+        """ % i for i in range(len(countries))
+    ]
+    plot(cur, datasource, "diff_confirmed_confirmed", params)
 
 
 
@@ -227,19 +218,15 @@ def extrapolate(days, df, scaler, poptexp, poptsig):
 
 
 
-def plot_regression(cnx):
-    fr = dataframe_fit(cnx, "France")
-    ch = dataframe_fit(cnx, "Chine")
+def plot_regression(cnx, countries):
+    params = {"countries": countries}
+    datasource = []
+    for c in countries:
+        data = dataframe_fit(cnx, c)
+        fulldf = extrapolate(30, *data)
+        datasource.append(fulldf.itertuples(index=False))
 
-    dffr = extrapolate(30, *fr)
-    dfch = extrapolate(30, *ch)
-
-    datasource = {
-        'conf_fit_fr': dffr.itertuples(index=False),
-        'conf_fit_ch': dfch.itertuples(index=False)
-    }
-
-    plot(None, datasource, "confirmed_fit_time")
+    plot(None, datasource, "confirmed_fit_time", params)
 
 
 
@@ -259,14 +246,16 @@ def main():
     if args.tmpdir is not None:
         config.tmpdir = args.tmpdir
 
+    countries = ["France", "Chine"]
+
     cnx = db.new_connection()
     cur = cnx.cursor()
 
     if args.list:
         list_countries(cur)
     else:
-        plot_raw_data(cur)
-        plot_regression(cnx)
+        plot_raw_data(cur, countries)
+        plot_regression(cnx, countries)
 
     cur.execute("PRAGMA optimize")
 
