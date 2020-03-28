@@ -25,3 +25,6 @@ def create_tables(cur):
             PRIMARY KEY (country, date)
         )
     """)
+
+    cur.execute("""CREATE INDEX IF NOT EXISTS daily_update_idx
+        ON daily_update(LOWER(country), date)""")
