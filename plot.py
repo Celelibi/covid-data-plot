@@ -122,7 +122,7 @@ def sigma(X, a, b, c):
 
 
 
-def dataframe_fit(cnx, country="France"):
+def get_dataframe(cnx, country):
     params = {'country': country}
 
     sql = """
@@ -131,16 +131,29 @@ def dataframe_fit(cnx, country="France"):
         WHERE country=:country
         ORDER BY date
     """
-    df = pd.read_sql_query(sql, cnx, params=params, parse_dates=["date"])
-    X = df["date"].to_numpy().astype(np.float64)
-    Y = df["confirmed"]
+    return pd.read_sql_query(sql, cnx, params=params, parse_dates=["date"])
 
+
+
+def fit_models(X, Y):
     scaler = skprep.StandardScaler()
     X = scaler.fit_transform(X.reshape(-1, 1)).reshape(-1)
 
     poptexp, _ = sp.optimize.curve_fit(exp, X, Y)
-    df["expmodel"] = exp(X, *poptexp)
     poptsig, _ = sp.optimize.curve_fit(sigma, X, Y, p0=[1.0, 1.0, Y.max()])
+
+    return scaler, poptexp, poptsig
+
+
+
+def dataframe_fit(cnx, country="France"):
+    df = get_dataframe(cnx, country)
+    X = df["date"].to_numpy().astype(np.float64)
+    Y = df["confirmed"].to_numpy()
+
+    scaler, poptexp, poptsig = fit_models(X, Y)
+    X = scaler.transform(X.reshape(-1, 1)).reshape(-1)
+    df["expmodel"] = exp(X, *poptexp)
     df["sigmoidmodel"] = sigma(X, *poptsig)
 
     return df, scaler, poptexp, poptsig
