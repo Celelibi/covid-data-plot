@@ -6,11 +6,7 @@ import collections
 import subprocess
 import argparse
 import tempfile
-import sklearn.preprocessing as skprep
-import pandas as pd
 import numpy as np
-import scipy as sp
-import scipy.optimize
 import config
 import db
 
@@ -180,6 +176,8 @@ def sigma(X, a, b, c):
 
 
 def get_dataframe(cnx, country):
+    import pandas as pd
+
     params = {'country': country}
 
     sql = """
@@ -193,11 +191,14 @@ def get_dataframe(cnx, country):
 
 
 def fit_models(X, Y):
+    import sklearn.preprocessing as skprep
+    import scipy.optimize as spopt
+
     scaler = skprep.StandardScaler()
     X = scaler.fit_transform(X.reshape(-1, 1)).reshape(-1)
 
-    poptexp, _ = sp.optimize.curve_fit(exp, X, Y)
-    poptsig, _ = sp.optimize.curve_fit(sigma, X, Y, p0=[1.0, 1.0, Y.max()])
+    poptexp, _ = spopt.curve_fit(exp, X, Y)
+    poptsig, _ = spopt.curve_fit(sigma, X, Y, p0=[1.0, 1.0, Y.max()])
 
     return scaler, poptexp, poptsig
 
@@ -211,6 +212,8 @@ def fit(df):
 
 
 def simulate_models(df, scaler, poptexp, poptsig, until=None, step=None):
+    import pandas as pd
+
     if step is None:
         step = np.timedelta64(1, "D")
 
