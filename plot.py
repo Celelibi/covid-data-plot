@@ -182,7 +182,7 @@ def fit_models(X, Y):
 
 
 
-def dataframe_fit(cnx, country="France"):
+def dataframe_fit(cnx, country):
     df = get_dataframe(cnx, country)
     X = df["date"].to_numpy().astype(np.float64)
     Y = df["confirmed"].to_numpy()
@@ -236,6 +236,7 @@ def main():
     parser.add_argument("-g", "--gnuplotdir", help="Directory where the gnuplot scripts are located (default: %s)" % config.gnuplotdir)
     parser.add_argument("-t", "--tmpdir", help="Directory where to store the temporary data files (default to system temporary directory)")
     parser.add_argument("-l", "--list", action='store_true', help="List available countries and exit")
+    parser.add_argument("-c", "--country", action='append', help="Countries to plot")
 
     args = parser.parse_args()
 
@@ -246,7 +247,10 @@ def main():
     if args.tmpdir is not None:
         config.tmpdir = args.tmpdir
 
-    countries = ["France", "Chine"]
+    if args.country is None:
+        countries = ["France", "Chine"]
+    else:
+        countries = args.country
 
     cnx = db.new_connection()
     cur = cnx.cursor()
