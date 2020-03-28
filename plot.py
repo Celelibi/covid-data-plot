@@ -203,14 +203,10 @@ def fit_models(X, Y):
 
 
 
-def dataframe_fit(cnx, country):
-    df = get_dataframe(cnx, country)
+def fit(df):
     X = df["date"].to_numpy().astype(np.float64)
     Y = df["confirmed"].to_numpy()
-
-    scaler, poptexp, poptsig = fit_models(X, Y)
-
-    return df, scaler, poptexp, poptsig
+    return fit_models(X, Y)
 
 
 
@@ -237,11 +233,12 @@ def plot_regression(cnx, countries):
     oneday = np.timedelta64(1, "D")
     datasource = []
     for c in countries:
-        df, scaler, poptexp, poptsig = dataframe_fit(cnx, c)
+        df = get_dataframe(cnx, c)
+        popt = fit(df)
 
         lastdate = df["date"].to_numpy().max() + oneday
         lastdate = lastdate + 30 * oneday
-        fulldf = simulate_models(df, scaler, poptexp, poptsig, until=lastdate)
+        fulldf = simulate_models(df, *popt, until=lastdate)
 
         datasource.append(fulldf.itertuples(index=False))
 
