@@ -45,6 +45,23 @@ def list_countries(cur):
 
 
 
+def fill_datafiles(cur, datasource, params, fp):
+    if cur is not None:
+        it = cur.execute(datasource, params)
+    else:
+        it = datasource
+
+    cnt = 0
+    for row in it:
+        rowstr = " ".join(str(f) for f in row)
+        print(rowstr, file=fp)
+        cnt += 1
+
+    print(cnt, "rows written")
+    fp.flush()
+
+
+
 def plot(cur, datasource, name, params={}):
     # Make the possibly missing directories
     if config.tmpdir:
@@ -60,25 +77,21 @@ def plot(cur, datasource, name, params={}):
     gnuplotcmd += ["-e", 'load "%s"' % gnuplotinc]
     gnuplotcmd += ["-e", 'set output "%s"' % figfile]
 
+    datasourceit = datasource.values()
+    datanames = datasource.keys()
+
     with contextlib.ExitStack() as exitstack:
-        for dataname, datasource in datasource.items():
+        datafpnames = []
+        for dsource in datasourceit:
             datafp = tempfile.NamedTemporaryFile("w+", dir=config.tmpdir)
             exitstack.enter_context(datafp)
+            datafpnames.append(datafp.name)
 
-            if cur is not None:
-                it = cur.execute(datasource, params)
-            else:
-                it = datasource
+            fill_datafiles(cur, dsource, params, datafp)
 
-            cnt = 0
-            for row in it:
-                rowstr = " ".join(str(f) for f in row)
-                print(rowstr, file=datafp)
-                cnt += 1
 
-            print(cnt, "rows written")
-            datafp.flush()
-            gnuplotcmd += ["-e", '%s = "%s"' % (dataname, datafp.name)]
+        for dataname, filename in zip(datanames, datafpnames):
+            gnuplotcmd += ["-e", '%s = "%s"' % (dataname, filename)]
 
         for kv in params.items():
             gnuplotcmd += ["-e", '%s = %r' % kv]
