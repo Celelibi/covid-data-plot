@@ -14,6 +14,37 @@ import config
 import db
 
 
+
+def list_countries(cur):
+    cur.execute("SELECT COUNT(DISTINCT country) FROM daily_update")
+    (total,) = cur.fetchone()
+    print("%d countries found" % total)
+
+    cur.execute("SELECT MAX(LENGTH(country)) FROM daily_update")
+    (maxlenc,) = cur.fetchone()
+    cur.execute("""
+        SELECT MAX(LENGTH(cnt))
+        FROM (
+            SELECT COUNT(*) AS cnt
+            FROM daily_update
+            GROUP BY country
+        )
+    """)
+    (maxlenn,) = cur.fetchone()
+
+    cur.execute("""
+        SELECT country, COUNT(*)
+        FROM daily_update
+        GROUP BY country
+        ORDER BY country
+    """)
+    print("Country".center(maxlenc) + " Number of data points")
+    print("".ljust(maxlenc, '-') + " ---------------------")
+    for country, npoints in cur:
+        print(country.ljust(maxlenc), str(npoints).rjust(maxlenn))
+
+
+
 def plot(cur, datasource, name, params={}):
     # Make the possibly missing directories
     if config.tmpdir:
@@ -204,6 +235,7 @@ def main():
     parser.add_argument("-f", "--figdir", help="Directory where to store the output figures (default: %s)" % config.figdir)
     parser.add_argument("-g", "--gnuplotdir", help="Directory where the gnuplot scripts are located (default: %s)" % config.gnuplotdir)
     parser.add_argument("-t", "--tmpdir", help="Directory where to store the temporary data files (default to system temporary directory)")
+    parser.add_argument("-l", "--list", action='store_true', help="List available countries and exit")
 
     args = parser.parse_args()
 
@@ -216,8 +248,12 @@ def main():
 
     cnx = db.new_connection()
     cur = cnx.cursor()
-    plot_raw_data(cur)
-    plot_regression(cnx)
+
+    if args.list:
+        list_countries(cur)
+    else:
+        plot_raw_data(cur)
+        plot_regression(cnx)
 
     cur.execute("PRAGMA optimize")
 
