@@ -46,6 +46,27 @@ def list_countries(cur):
 
 
 
+def check_countries(cur, countries):
+    countries = set(countries)
+
+    sql = ", ".join(["(?)"]*len(countries))
+    cur.execute("""WITH query(country) AS (VALUES %s)
+        SELECT q.*
+        FROM query AS q
+            LEFT JOIN daily_update AS d
+                ON (LOWER(q.country)=LOWER(d.country))
+        WHERE d.country IS NULL""" % sql, sorted(countries))
+    missing = set(c for c, in cur)
+
+    if missing:
+        print("Some countries are not in the database:")
+        print(", ".join(sorted(missing)))
+        return False
+
+    return True
+
+
+
 def fill_datafiles(cur, datasource, params, fp):
     if cur is not None:
         it = cur.execute(datasource, params)
@@ -258,8 +279,9 @@ def main():
     if args.list:
         list_countries(cur)
     else:
-        plot_raw_data(cur, countries)
-        plot_regression(cnx, countries)
+        if check_countries(cur, countries):
+            plot_raw_data(cur, countries)
+            plot_regression(cnx, countries)
 
     cur.execute("PRAGMA optimize")
 
