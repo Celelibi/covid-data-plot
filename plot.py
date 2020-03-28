@@ -3,6 +3,7 @@
 import os
 import contextlib
 import subprocess
+import argparse
 import tempfile
 import sklearn.preprocessing as skprep
 import pandas as pd
@@ -199,6 +200,20 @@ def plot_regression(cnx):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Plot the statistics")
+    parser.add_argument("-f", "--figdir", help="Directory where to store the output figures (default: %s)" % config.figdir)
+    parser.add_argument("-g", "--gnuplotdir", help="Directory where the gnuplot scripts are located (default: %s)" % config.gnuplotdir)
+    parser.add_argument("-t", "--tmpdir", help="Directory where to store the temporary data files (default to system temporary directory)")
+
+    args = parser.parse_args()
+
+    if args.figdir is not None:
+        config.figdir = args.figdir
+    if args.gnuplotdir is not None:
+        congnuplot.gnuplotdir = args.gnuplotdir
+    if args.tmpdir is not None:
+        config.tmpdir = args.tmpdir
+
     cnx = db.new_connection()
     cur = cnx.cursor()
     plot_raw_data(cur)
