@@ -2,6 +2,13 @@ set title "Nombre de cas confirmés"
 set xlabel "Date"
 set ylabel "Cas confirmés"
 
+stats conf_fit_fr using 3 nooutput
+maxfr = STATS_max
+stats conf_fit_ch using 3 nooutput
+maxch = STATS_max
+maxval = (maxfr > maxch) ? maxfr : maxch
+set yrange [:maxval*1.2]
+
 fmt = "%Y-%m-%d %H:%M:%S"
 set timefmt fmt
 set xdata time

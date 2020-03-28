@@ -147,9 +147,34 @@ def dataframe_fit(cnx, country="France"):
 
 
 
+def extrapolate(days, df, scaler, poptexp, poptsig):
+    day = np.timedelta64(1, "D")
+    firstdate = df["date"].to_numpy().max() + day
+    dates = np.arange(firstdate, firstdate + days * day, day)
+
+    X = dates.astype(np.float64)
+    X = scaler.transform(X.reshape(-1, 1)).reshape(-1)
+
+    Yexp = exp(X, *poptexp)
+    Ysig = sigma(X, *poptsig)
+
+    columns = {
+        "date": dates,
+        "expmodel": Yexp,
+        "sigmoidmodel": Ysig
+    }
+    newdf = pd.DataFrame(columns)
+
+    return df.append(newdf, sort=False)
+
+
+
 def plot_regression(cnx):
-    dffr, *_ = dataframe_fit(cnx, "France")
-    dfch, *_ = dataframe_fit(cnx, "Chine")
+    fr = dataframe_fit(cnx, "France")
+    ch = dataframe_fit(cnx, "Chine")
+
+    dffr = extrapolate(30, *fr)
+    dfch = extrapolate(30, *ch)
 
     datasource = {
         'conf_fit_fr': dffr.itertuples(index=False),
