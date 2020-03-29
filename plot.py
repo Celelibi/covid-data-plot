@@ -93,7 +93,8 @@ def plot(cur, datasource, name, params={}):
 
     gnuplotcmd = ["gnuplot", "-d"]
     gnuplotcmd += ["-e", 'load "%s"' % gnuplotinc]
-    gnuplotcmd += ["-e", 'set output "%s"' % figfile]
+    gnuplotcmd += ["-e", 'figfile = "%s"' % figfile]
+    gnuplotcmd += ["-e", 'set output figfile']
 
     if isinstance(datasource, collections.abc.Mapping):
         datasourceit = datasource.values()
