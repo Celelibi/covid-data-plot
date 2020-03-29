@@ -191,15 +191,19 @@ def get_dataframe(cnx, country):
 
 
 
-def fit_models(X, Y):
+def fit_models(X, Y, p0exp=None, p0sig=None):
     import sklearn.preprocessing as skprep
     import scipy.optimize as spopt
 
     scaler = skprep.StandardScaler()
     X = scaler.fit_transform(X.reshape(-1, 1)).reshape(-1)
 
-    poptexp, _ = spopt.curve_fit(exp, X, Y)
-    poptsig, _ = spopt.curve_fit(sigma, X, Y, p0=[1.0, 1.0, Y.max()])
+    # Just a sane default starting point
+    if p0sig is None:
+        p0sig = [1.0, 1.0, -Y.max()]
+
+    poptexp, _ = spopt.curve_fit(exp, X, Y, p0=p0exp, maxfev=10000)
+    poptsig, _ = spopt.curve_fit(sigma, X, Y, p0=p0sig, maxfev=10000)
 
     return scaler, poptexp, poptsig
 
