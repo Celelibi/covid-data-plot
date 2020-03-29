@@ -318,7 +318,7 @@ def plot_metrics_evolution(cnx, countries):
         datasource_anim += [f.itertuples(index=False) for f in dfevo]
         params_anim['nframes'] += len(dfevo)
         params_anim['ncountries'] += 1
-        params_anim['countrieslastidx'].append(params_anim['nframes'] - 1)
+        params_anim['countrieslastidx'].append(params_anim['nframes'])
         params_anim['ndonecountries'] += [params_anim['ncountries'] - 1] * len(dfevo)
         anim_metrics.append(df.itertuples(index=False))
 

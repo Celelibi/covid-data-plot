@@ -87,7 +87,7 @@ do for [frame=1:nframes] {
 		plot metricscurfile every ::::npoints using 1:5 lt newlt+2 title sprintf("%s: exp model", curcountry),\
 		                 '' every ::::npoints using 1:6 lt newlt+3 title sprintf("%s: sigmoid model", curcountry)
 	} else {
-		npoints = frame - countrieslastidx[ndc] - 2
+		npoints = frame - countrieslastidx[ndc] - 1
 		plot for [i=1:ndc] filenames[metricsidx+i-1] using 1:5 lt 3*(i-1)+2 title sprintf("%s: exp model", countries[i]),\
 		     for [i=1:ndc] filenames[metricsidx+i-1] using 1:6 lt 3*(i-1)+3 title sprintf("%s: sigmoid model", countries[i]),\
 		     metricscurfile every ::::npoints using 1:5 lt newlt+2 title sprintf("%s: exp model", curcountry),\
