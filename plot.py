@@ -255,6 +255,82 @@ def plot_regression(cnx, countries):
 
 
 
+def metrics_evolution(cnx, country):
+    import sklearn.metrics as skmetrics
+    import pandas as pd
+
+    oneday = np.timedelta64(1, "D")
+    df = get_dataframe(cnx, country)
+    lastdate = df["date"].to_numpy().max() + oneday
+    lastdate = lastdate + 30 * oneday
+
+    X = df["date"].to_numpy().astype(np.float64)
+    Y = df["confirmed"].to_numpy()
+
+    _, *p0 = fit_models(X, Y)
+    scores = []
+    dfevo = []
+
+    minsamples = 20
+    testsize = 5
+    for chunksize in range(minsamples, X.shape[0] - testsize):
+        # Take a chunk of the time series and keep the last 10 as test set
+        Xchunk = X[:chunksize]
+        Ychunk = Y[:chunksize]
+        Xtrain = Xchunk[:-testsize]
+        Ytrain = Ychunk[:-testsize]
+        Xtest = Xchunk[-testsize:]
+        Ytest = Ychunk[-testsize:]
+
+        scaler, *popts = fit_models(Xtrain, Ytrain, *p0)
+        dfchunk = df.iloc[:chunksize].copy()
+        dfchunk["testset"] = 0
+        dfchunk.loc[chunksize-testsize:, "testset"] = 1
+        dfchunk = simulate_models(dfchunk, scaler, *popts, until=lastdate)
+        dfevo.append(dfchunk)
+
+        dfpred = dfchunk.iloc[chunksize-testsize:chunksize]
+        r2exp = skmetrics.r2_score(Ytest, dfpred["expmodel"])
+        r2sig = skmetrics.r2_score(Ytest, dfpred["sigmoidmodel"])
+        mseexp = skmetrics.mean_squared_error(Ytest, dfpred["expmodel"])
+        msesig = skmetrics.mean_squared_error(Ytest, dfpred["sigmoidmodel"])
+        scores.append([df["date"][chunksize-1], r2exp, r2sig, mseexp, msesig])
+
+    dfmetrics = pd.DataFrame(scores, columns=["date", "r2exp", "r2sig", "mseexp", "msesig"])
+    return dfmetrics, dfevo
+
+
+
+def plot_metrics_evolution(cnx, countries):
+    datasource_metrics = []
+    datasource_anim = []
+    anim_metrics = []
+    params_anim = {
+        'countries': countries,
+        'nframes': 0,
+        'ncountries': 0,
+        'countrieslastidx': [],
+        'ndonecountries': []
+    }
+    for c in countries:
+        df, dfevo = metrics_evolution(cnx, c)
+        datasource_metrics.append(df.itertuples(index=False))
+        datasource_anim += [f.itertuples(index=False) for f in dfevo]
+        params_anim['nframes'] += len(dfevo)
+        params_anim['ncountries'] += 1
+        params_anim['countrieslastidx'].append(params_anim['nframes'] - 1)
+        params_anim['ndonecountries'] += [params_anim['ncountries'] - 1] * len(dfevo)
+        anim_metrics.append(df.itertuples(index=False))
+
+    params_anim['metricsidx'] = len(datasource_anim) + 1
+    datasource_anim += anim_metrics
+
+    params = {"countries": countries}
+    plot(None, datasource_metrics, "confirmed_model_metrics", params)
+    plot(None, datasource_anim, "confirmed_model_metrics_anim", params_anim)
+
+
+
 def main():
     parser = argparse.ArgumentParser(description="Plot the statistics")
     parser.add_argument("-f", "--figdir", help="Directory where to store the output figures (default: %s)" % config.figdir)
@@ -286,6 +362,7 @@ def main():
         if check_countries(cur, countries):
             plot_raw_data(cur, countries)
             plot_regression(cnx, countries)
+            plot_metrics_evolution(cnx, countries)
 
     cur.execute("PRAGMA optimize")
 
