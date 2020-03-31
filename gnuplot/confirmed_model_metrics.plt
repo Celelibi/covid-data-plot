@@ -1,3 +1,4 @@
+set output figfile
 set title "Métrique des modèles"
 set xlabel "Date"
 set ylabel "MSE"

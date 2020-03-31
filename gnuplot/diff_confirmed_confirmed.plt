@@ -1,3 +1,4 @@
+set output figfile
 set title "Nouveaux cas par cas confirmé"
 set xlabel "Cas confirmés"
 set ylabel "Nouveaux cas"
