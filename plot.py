@@ -88,12 +88,12 @@ def plot(cur, datasource, name, params={}):
 
     # Make the file path from the configured path
     gnuplotinc = os.path.join(config.gnuplotdir, "common.plt")
-    figfile = os.path.join(config.figdir, "%s.png" % name)
+    figbasename = os.path.join(config.figdir, name)
     gnuplotfile = os.path.join(config.gnuplotdir, "%s.plt" % name)
 
     gnuplotcmd = ["gnuplot", "-d"]
     gnuplotcmd += ["-e", 'load "%s"' % gnuplotinc]
-    gnuplotcmd += ["-e", 'figfile = "%s"' % figfile]
+    gnuplotcmd += ["-e", 'figbasename = "%s"' % figbasename]
 
     if isinstance(datasource, collections.abc.Mapping):
         datasourceit = datasource.values()

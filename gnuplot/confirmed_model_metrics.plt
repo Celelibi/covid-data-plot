@@ -1,4 +1,4 @@
-set output figfile
+set output figbasename.".png"
 set title "Métrique des modèles"
 set xlabel "Date"
 set ylabel "MSE"

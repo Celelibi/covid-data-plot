@@ -1,4 +1,4 @@
-set output figfile
+set output figbasename.".png"
 set title "Nouveaux cas confirmés dans le temps"
 set xlabel "Date"
 set ylabel "Nouveaux cas"

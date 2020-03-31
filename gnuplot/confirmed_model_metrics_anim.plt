@@ -1,5 +1,5 @@
 set terminal gif size 800,600 animate delay 50
-set output figfile[:strstrt(figfile, ".png")]."gif"
+set output figbasename.".gif"
 
 set xlabel "Date"
 fmt = "%Y-%m-%d %H:%M:%S"
