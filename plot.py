@@ -138,6 +138,7 @@ def plot_raw_data(cur, countries):
             SELECT date, confirmed
             FROM daily_update
             WHERE LOWER(country)=LOWER(:country%d)
+                AND date < (SELECT MAX(date) FROM daily_update)
             ORDER BY date
         """ % i for i in range(len(countries))
     ]
@@ -147,6 +148,7 @@ def plot_raw_data(cur, countries):
             SELECT date, confirmed - lag(confirmed) OVER win
             FROM daily_update
             WHERE LOWER(country)=LOWER(:country%d)
+                AND date < (SELECT MAX(date) FROM daily_update)
             WINDOW win AS (ORDER BY date)
             ORDER BY date
         """ % i for i in range(len(countries))
@@ -157,6 +159,7 @@ def plot_raw_data(cur, countries):
             SELECT confirmed, confirmed - lag(confirmed) OVER win
             FROM daily_update
             WHERE LOWER(country)=LOWER(:country%d)
+                AND date < (SELECT MAX(date) FROM daily_update)
             WINDOW win AS (ORDER BY date)
             ORDER BY date
         """ % i for i in range(len(countries))
@@ -184,6 +187,7 @@ def get_dataframe(cnx, country):
         SELECT date, confirmed
         FROM daily_update
         WHERE LOWER(country)=LOWER(:country)
+                AND date < (SELECT MAX(date) FROM daily_update)
         ORDER BY date
     """
     return pd.read_sql_query(sql, cnx, params=params, parse_dates=["date"])
