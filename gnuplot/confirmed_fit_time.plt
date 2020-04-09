@@ -7,6 +7,8 @@ maxy = 0
 do for [i=1:|filenames|] {
 	stats filenames[i] using 3 nooutput
 	maxy = (STATS_max > maxy) ? STATS_max : maxy
+	stats filenames[i] using 5 nooutput
+	maxy = (STATS_max > maxy) ? STATS_max : maxy
 }
 set yrange [:maxy*1.2]
 
