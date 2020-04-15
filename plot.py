@@ -311,12 +311,12 @@ def plot_regression(cnx, countries, ndaysavg):
 
 
 
-def metrics_evolution(cnx, country):
+def metrics_evolution(cnx, country, ndaysavg):
     import sklearn.metrics as skmetrics
     import pandas as pd
 
     oneday = np.timedelta64(1, "D")
-    df = get_dataframe(cnx, country)
+    df = get_dataframe(cnx, country, ndaysavg)
     lastdate = df["date"].to_numpy().max() + oneday
     lastdate = lastdate + 30 * oneday
 
@@ -357,7 +357,12 @@ def metrics_evolution(cnx, country):
 
 
 
-def plot_metrics_evolution(cnx, countries):
+def metrics_evolution_dataframe(cnx, countries, ndaysavg):
+    params = {
+        "countries": countries,
+        "ndaysavg": ndaysavg
+    }
+
     datasource_metrics = []
     datasource_anim = []
     anim_metrics = []
@@ -366,10 +371,11 @@ def plot_metrics_evolution(cnx, countries):
         'nframes': 0,
         'ncountries': 0,
         'countrieslastidx': [],
-        'ndonecountries': []
+        'ndonecountries': [],
+        "ndaysavg": ndaysavg
     }
     for c in countries:
-        df, dfevo = metrics_evolution(cnx, c)
+        df, dfevo = metrics_evolution(cnx, c, ndaysavg)
         datasource_metrics.append(df.itertuples(index=False))
         datasource_anim += [f.itertuples(index=False) for f in dfevo]
         params_anim['nframes'] += len(dfevo)
@@ -381,9 +387,18 @@ def plot_metrics_evolution(cnx, countries):
     params_anim['metricsidx'] = len(datasource_anim) + 1
     datasource_anim += anim_metrics
 
-    params = {"countries": countries}
-    plot(None, datasource_metrics, "confirmed_model_metrics", params)
-    plot(None, datasource_anim, "confirmed_model_metrics_anim", params_anim)
+    return datasource_metrics, params, datasource_anim, params_anim
+
+
+
+def plot_metrics_evolution(cnx, countries, ndaysavg):
+    dsm, p, dsa, pa = metrics_evolution_dataframe(cnx, countries, 1)
+    plot(None, dsm, "confirmed_model_metrics", p)
+    plot(None, dsa, "confirmed_model_metrics_anim", pa)
+
+    dsm, p, dsa, pa = metrics_evolution_dataframe(cnx, countries, ndaysavg)
+    plot(None, dsm, "confirmed_model_metrics_avg", p)
+    plot(None, dsa, "confirmed_model_metrics_anim_avg", pa)
 
 
 
@@ -421,7 +436,7 @@ def main():
         if check_countries(cur, countries):
             plot_raw_data(cur, countries, ndaysavg)
             plot_regression(cnx, countries, ndaysavg)
-            plot_metrics_evolution(cnx, countries)
+            plot_metrics_evolution(cnx, countries, ndaysavg)
 
     cur.execute("PRAGMA optimize")
 
