@@ -283,11 +283,11 @@ def simulate_models(df, scaler, poptexp, poptsig, until=None, step=None):
 
 
 
-def plot_regression(cnx, countries):
+def regress_dataframe(cnx, countries, ndaysavg):
     oneday = np.timedelta64(1, "D")
     datasource = []
     for c in countries:
-        df = get_dataframe(cnx, c)
+        df = get_dataframe(cnx, c, ndaysavg)
         popt = fit(df)
 
         lastdate = df["date"].to_numpy().max() + oneday
@@ -296,8 +296,18 @@ def plot_regression(cnx, countries):
 
         datasource.append(fulldf.itertuples(index=False))
 
+    return datasource
+
+
+
+def plot_regression(cnx, countries, ndaysavg):
+    datasource = regress_dataframe(cnx, countries, 1)
     params = {"countries": countries}
     plot(None, datasource, "confirmed_fit_time", params)
+
+    datasource = regress_dataframe(cnx, countries, ndaysavg)
+    params["ndaysavg"] = ndaysavg
+    plot(None, datasource, "confirmed_fit_time_avg", params)
 
 
 
@@ -410,7 +420,7 @@ def main():
     else:
         if check_countries(cur, countries):
             plot_raw_data(cur, countries, ndaysavg)
-            plot_regression(cnx, countries)
+            plot_regression(cnx, countries, ndaysavg)
             plot_metrics_evolution(cnx, countries)
 
     cur.execute("PRAGMA optimize")
