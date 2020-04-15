@@ -130,7 +130,7 @@ def plot(cur, datasource, name, params={}):
 
 
 
-def plot_raw_data(cur, countries):
+def plot_raw_data(cur, countries, ndaysavg):
     params = {"country%d" % i: c for i, c in enumerate(countries)}
     params["countries"] = countries
 
@@ -165,6 +165,45 @@ def plot_raw_data(cur, countries):
         """ % i for i in range(len(countries))
     ]
     plot(cur, datasource, "diff_confirmed_confirmed", params)
+
+
+    # Now the same three averaging thhe last 5 days
+    params["ndaysavg"] = ndaysavg
+
+    datasource = ["""
+            SELECT date, AVG(confirmed) OVER win
+            FROM daily_update
+            WHERE LOWER(country)=LOWER(:country%d)
+                AND date < (SELECT MAX(date) FROM daily_update)
+            WINDOW win AS (ORDER BY date ROWS :ndaysavg PRECEDING)
+            ORDER BY date
+        """ % i for i in range(len(countries))
+    ]
+    plot(cur, datasource, "confirmed_time_avg", params)
+
+    datasource = ["""
+            SELECT date,
+                (confirmed - lag(confirmed, :ndaysavg) OVER win) / :ndaysavg
+            FROM daily_update
+            WHERE LOWER(country)=LOWER(:country%d)
+                AND date < (SELECT MAX(date) FROM daily_update)
+            WINDOW win AS (ORDER BY date)
+            ORDER BY date
+        """ % i for i in range(len(countries))
+    ]
+    plot(cur, datasource, "diff_confirmed_time_avg", params)
+
+    datasource = ["""
+            SELECT confirmed,
+                (confirmed - lag(confirmed, :ndaysavg) OVER win) / :ndaysavg
+            FROM daily_update
+            WHERE LOWER(country)=LOWER(:country%d)
+                AND date < (SELECT MAX(date) FROM daily_update)
+            WINDOW win AS (ORDER BY date)
+            ORDER BY date
+        """ % i for i in range(len(countries))
+    ]
+    plot(cur, datasource, "diff_confirmed_confirmed_avg", params)
 
 
 
@@ -341,6 +380,7 @@ def main():
     parser.add_argument("-t", "--tmpdir", help="Directory where to store the temporary data files (default to system temporary directory)")
     parser.add_argument("-l", "--list", action='store_true', help="List available countries and exit")
     parser.add_argument("-c", "--country", action='append', help="Countries to plot")
+    parser.add_argument("-N", "--ndaysavg", default=5, type=int, help="Average the number of confirmed case over the N previous days")
 
     args = parser.parse_args()
 
@@ -356,6 +396,8 @@ def main():
     else:
         countries = args.country
 
+    ndaysavg = args.ndaysavg
+
     cnx = db.new_connection()
     cur = cnx.cursor()
 
@@ -363,7 +405,7 @@ def main():
         list_countries(cur)
     else:
         if check_countries(cur, countries):
-            plot_raw_data(cur, countries)
+            plot_raw_data(cur, countries, ndaysavg)
             plot_regression(cnx, countries)
             plot_metrics_evolution(cnx, countries)
 
