@@ -217,16 +217,20 @@ def sigma(X, a, b, c):
 
 
 
-def get_dataframe(cnx, country):
+def get_dataframe(cnx, country, ndaysavg=1):
     import pandas as pd
 
-    params = {'country': country}
+    params = {
+        'country': country,
+        'ndaysavg': ndaysavg
+    }
 
     sql = """
-        SELECT date, confirmed
+        SELECT date, AVG(confirmed) OVER win AS confirmed
         FROM daily_update
         WHERE LOWER(country)=LOWER(:country)
                 AND date < (SELECT MAX(date) FROM daily_update)
+        WINDOW win AS (ORDER BY date ROWS :ndaysavg PRECEDING)
         ORDER BY date
     """
     return pd.read_sql_query(sql, cnx, params=params, parse_dates=["date"])
